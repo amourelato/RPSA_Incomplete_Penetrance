@@ -1,0 +1,26 @@
+Individual	Haplotype	Phenotype	Block
+JM4494	G2	1	Block_1
+JM4492	G0	0	Block_2
+JM4493	G0	0	Block_2
+JM9405	G2	1	Block_3
+JM9654	G0	0	Block_4
+JM9655	G3	1	Block_4
+JM4502	G1	1	Block_5
+JM4503	G3	1	Block_6
+JM4501	G0	0	Block_6
+JM9402	G3	1	Block_7
+JM9401	G0	0	Block_8
+JM9403	G0	1	Block_8
+JM9409	G2	1	Block_9
+JM9407	G0	0	Block_10
+JM9408	G3	1	Block_10
+JM9400	G3	1	Block_11
+JM0014	G0	0	Block_12
+
+
+
+
+
+
+
+

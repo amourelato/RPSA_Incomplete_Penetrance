@@ -1,0 +1,263 @@
+#01_Fine_Map_Coloc_RPSA_eQTLs.R
+#Performs RPSA eQTL fine mapping and colocalization, and then constructs and exports union sets of eQTLs
+
+library(susieR)
+library(Rfast)
+library(Matrix)
+library(coloc)
+library(tidyverse)
+library(gdata)
+library(dplyr)
+library(igraph)
+library(stringr)
+source("path_utils.R")
+
+#Remove covariate effects from gene expression and genotype matrix
+#Described in https://stephenslab.github.io/susieR/articles/finemapping.html#a-note-on-covariate-adjustment
+remove.covariate.effects <- function (X, Z, y) {
+  if (any(Z[,1]!=1)) Z = cbind(1, Z)
+  A   <- forceSymmetric(crossprod(Z))
+  SZy <- as.vector(solve(A,c(y %*% Z)))
+  SZX <- as.matrix(solve(A,t(Z) %*% X))
+  y <- y - c(Z %*% SZy)
+  X <- X - Z %*% SZX
+  return(list(X = X,y = y,SZy = SZy,SZX = SZX))
+}
+
+
+#Read in Table that contains filenames of eQTL sum_stats from all tissues to be mapped
+Tissue_Metadata_path <- file.path(data_dir, "Tissue_COV_PLINK.txt")
+Tissue_Metadata <- read.csv(Tissue_Metadata_path,
+                      sep="\t",
+                      header=TRUE)
+
+#load in paths for expression, covariates, and genotype matrix
+# Directory with expression vectors
+expr_dir <- file.path(data_dir, "RPSA_Expression")
+cov_dir <- file.path(data_dir, "GTEx_Analysis_v8_eQTL_covariates")
+PLINK_dir <- file.path(data_dir, "GTEx_PLINK_files_for_RPSA")
+
+#Loop through each tissue and fine-map RPSA eQTLs
+#Create an empty list for the fine-mapping results of each tissue
+susie_results <- list()
+
+for(i in 1:nrow(Tissue_Metadata)) {
+  
+  #load in normalized Expression Data
+  expr_file <- file.path(expr_dir, Tissue_Metadata$Exp_Data[i])
+  Exp_Y <- read.csv(expr_file,
+                    sep="\t",
+                    header = FALSE)
+  
+  #remove extraneous columns
+  Exp_Y <- subset(Exp_Y, select = -c(V1,V2, V3, V4))
+  Exp_Y_list <- as.double(Exp_Y[1,])
+  
+  #load in Covariates
+  cov_file <- file.path(cov_dir, Tissue_Metadata$Cov_Data[i])
+  Cov <- read.csv(cov_file,
+                  sep="\t",
+                  header = TRUE)
+  
+  #remove extraneous columns and turn Cov into matrix, and transpose
+  Cov <- subset(Cov, select = -c(ID))
+  Cov <- as.matrix(Cov)
+  Cov <- t(Cov)
+  
+  #read in genotype matrix for tissue
+  genotype_file <- file.path(PLINK_dir, Tissue_Metadata$PLINK_File[i])
+  EUR_CHR3_GENOMAT <- read.csv(genotype_file,
+                               sep="\t",
+                               header=TRUE)
+  
+  #remove duplicated pos from the genotype matrix
+  EUR_CHR3_GENOMAT_dedup <- EUR_CHR3_GENOMAT[!duplicated(EUR_CHR3_GENOMAT$POS), ]
+  
+  #set rownames equal to positions
+  rownames(EUR_CHR3_GENOMAT_dedup) <- EUR_CHR3_GENOMAT_dedup$POS
+  
+  #remove extraneous columns
+  EUR_CHR3_GENOMAT_dedup_cut <- subset(EUR_CHR3_GENOMAT_dedup, select = -c(CHR,SNP, X.C.M, POS, COUNTED, ALT))
+  
+  #transpose to an N (individual) by P (position) matrix
+  EUR_CHR3_GENOMAT_transposed <- t(EUR_CHR3_GENOMAT_dedup_cut)
+  
+  #scale NxP genotype matrix
+  EUR_CHR3_GENOMAT_transposed_scaled <- scale(EUR_CHR3_GENOMAT_transposed , center = TRUE, scale = TRUE)
+  
+  #remove columns with NA as these harbor no variants in the given population
+  EUR_CHR3_GENOMAT_transposed_scaled_cut <- EUR_CHR3_GENOMAT_transposed_scaled[ , colSums(is.na(EUR_CHR3_GENOMAT_transposed_scaled))==0]
+  
+  #remove covariates from y and genotype matrix
+  out = remove.covariate.effects(EUR_CHR3_GENOMAT_transposed_scaled_cut, Cov, Exp_Y_list)
+  
+  #fine-map
+  susie_results[[i]] <- susie(out$X, out$y, L=10, coverage=0.95)
+  
+}
+
+
+#Prepare each SuSIE PIP plot for exporting
+for (i in seq_along(susie_results)) {
+  # Get tissue name from the Exp_Data column of Tissue_Metadata
+  tissue_file <- Tissue_Metadata$Exp_Data[i]
+  tissue_name <- tools::file_path_sans_ext(tissue_file)
+  
+  # Build output file path
+  pdf_file <- file.path(pip_plot_dir, paste0("PIP_plot_", tissue_name, ".pdf"))
+  
+  # Save plot
+  pdf(pdf_file)
+  susie_plot(susie_results[[i]], y="PIP")
+  dev.off()
+}
+
+
+#now Colocalize CS's in all possible pairs of tissues
+#identify all possible pairs
+pairs <- combn(seq_along(susie_results), 2, simplify=FALSE)
+ 
+#create an empty list to store results
+coloc_filtered_results <- list()
+
+#Loop over each pair
+for (pair in pairs) {
+  i <- pair[1]
+  j <- pair[2]
+  
+  # Run coloc.susie() on the pair
+  coloc_result <- coloc.susie(susie_results[[i]], susie_results[[j]])
+  
+  # Filter to keep only PPH4 > 0.9
+  filtered_df <- dplyr::filter(coloc_result$summary, PP.H4.abf > 0.9)
+  
+  #Create a name for the filtered dataframe to write out which matches the two tissues that were co-localized
+  name_i <- tools::file_path_sans_ext(Tissue_Metadata$Exp_Data[i])
+  name_j <- tools::file_path_sans_ext(Tissue_Metadata$Exp_Data[j])
+  pair_name <- paste0(name_i, "_coloc_", name_j)
+  
+  # Store in list
+  coloc_filtered_results[[pair_name]] <- filtered_df
+}
+
+
+
+#bind all colocalizing dataframes
+All_Colocalizing_df <- bind_rows(coloc_filtered_results, .id = "Pair")
+
+
+# Create “union-sets” of eQTLs
+tissue_names <- str_remove(Tissue_Metadata$Exp_Data, "\\.txt$")
+
+#define a lookup table that contains the CS index, position and PIP for each SNP in a CS in each tissue
+credset_lookup <- data.frame()
+
+for (i in seq_along(susie_results)) {
+  susie_obj <- susie_results[[i]]
+  tissue <- tissue_names[i]
+  
+  if (!is.null(susie_obj$sets$cs)) {
+    cs_list <- susie_obj$sets$cs
+    cs_names <- names(cs_list)  
+    
+    for (j in seq_along(cs_list)) {
+      variant_indices <- cs_list[[j]]
+      positions <- names(susie_obj$pip)[variant_indices]  
+      pips <- susie_obj$pip[variant_indices]
+      
+      # extract numeric index from cs_name i.e. "L1" is 1
+      cs_idx <- as.integer(sub("L", "", cs_names[j]))
+      
+      tmp_df <- data.frame(
+        tissue = tissue,
+        susie_var = paste0("S", i),
+        cs_name = paste0("S", i, "_cs", cs_idx),
+        cs_index = cs_idx,                       
+        variant_index = variant_indices,
+        position = positions,
+        pip = pips,
+        stringsAsFactors = FALSE
+      )
+      
+      credset_lookup <- bind_rows(credset_lookup, tmp_df)
+    }
+  }
+}
+
+
+#define a graph where the nodes are the CS's identified in each tissue, and the edges are colocalizations between CS's
+
+#define the edges
+edges <- data.frame()
+
+for (pair_name in names(coloc_filtered_results)) {
+  coloc_df <- coloc_filtered_results[[pair_name]]
+  
+  # Extract tissue names from the pair_name
+  parts <- unlist(strsplit(pair_name, "_coloc_"))
+  tissue1 <- parts[1]
+  tissue2 <- parts[2]
+  
+  # Get SuSiE object IDs (S1, S2, ...) by matching tissue names
+  i <- which(tissue_names == tissue1)
+  j <- which(tissue_names == tissue2)
+  
+  susie1_id <- paste0("S", i)
+  susie2_id <- paste0("S", j)
+
+  # Loop over rows of coloc_df to create edges
+  for (k in seq_len(nrow(coloc_df))) {
+    cs1_id <- paste0(susie1_id, "_cs", coloc_df$idx1[k])
+    cs2_id <- paste0(susie2_id, "_cs", coloc_df$idx2[k])
+    
+    edges <- rbind(edges, data.frame(cs_a = cs1_id, cs_b = cs2_id))
+  }
+}
+
+#build the graph
+g <- graph_from_data_frame(edges, directed = FALSE)
+
+components <- components(g)
+component_df <- data.frame(
+  cs_name = names(components$membership),
+  component_id = components$membership
+)
+
+#using the graph and the lookup table, define a 'union-set' dataframe
+clustered_positions <- credset_lookup %>%
+  inner_join(component_df, by = "cs_name") %>%
+  arrange(component_id, tissue, cs_name, position)
+
+
+#Count the number of times a CS in each tissue co-localized
+
+count_node_edges <- function(edges) {
+  # Combine both columns into one vector
+  all_nodes <- c(edges[[1]], edges[[2]])
+  
+  # Count occurrences of each node
+  edge_counts <- table(all_nodes)
+  
+  # Convert to a data frame for easier viewing
+  edge_counts_df <- as.data.frame(edge_counts)
+  colnames(edge_counts_df) <- c("node", "edge_count")
+  
+  return(edge_counts_df)
+}
+
+#Subset to just union sets that resulted from the colocalization of CS's in >1 pair of tissues
+edge_counts_df <- count_node_edges(edges)
+nodes_with_multiple_edges <- edge_counts_df$node[edge_counts_df$edge_count > 1]
+clustered_positions_filtered <- clustered_positions[clustered_positions$cs_name %in% nodes_with_multiple_edges, ]
+
+#Subset to just unique positions in each union set
+clustered_positions_unique <- clustered_positions_filtered %>%
+  dplyr::distinct(position, .keep_all = TRUE)
+
+#Subset to just the position and the union set
+clustered_positions_export <- clustered_positions_unique[, c("position", "component_id")]
+
+#Export union-sets
+Union_set_file <- file.path(Coloc_dir, "Union_Sets.csv")
+write.csv(clustered_positions_export, Union_set_file, row.names = FALSE)
+
