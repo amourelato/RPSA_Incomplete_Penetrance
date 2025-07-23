@@ -10,18 +10,17 @@ Contains raw input files and intermediate data:
 - RPSA_Expression/: Fully processed, filtered and normalized gene expression matrices from GTEx v8, subset to just RPSA expression in the listed tissues (https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_expression_matrices.tar), left empty due to GitHub size restrictions
 - RPSA_Covariate_Adjusted_Expression/: Intermediate covariate-adjusted expression files produced by script 03_Covariate_Regression.py
 - GTEx_VCF_files/: Private genotype VCF data from GTEx v8 (not uploaded). See notes below
-- GTEx_Raw_Tissue_RNA_Counts/: Raw RNA counts from GTEx v8 (https://www.gtexportal.org/home/downloads/adult-gtex/bulk_tissue_expression)
+- GTEx_Raw_Tissue_RNA_Counts/: Raw RNA counts from GTEx v8 (https://storage.googleapis.com/adult-gtex/bulk-gex/v8/rna-seq/GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_reads.gct.gz)
 - GTEx_PLINK_files_for_RPSA/: Private gene-dosage files obtained from GTEx v8 vcf files (not uploaded). See notes below
 - GTEx_Normalized_Tissue_RNA_counts/: Intermediate normalized RNA count files produced by script 02_Normalize_Log_Transform_Counts.R, left empty due to GitHub size restrictions
 - GTEx_Analysis_v8_eQTL_covariates/: Covariate files from GTEx v8 (https://storage.googleapis.com/adult-gtex/bulk-qtl/v8/single-tissue-cis-qtl/GTEx_Analysis_v8_eQTL_covariates.tar.gz), left empty due to GitHub size restrictions
 -Tissue_COV_PLINK: helper text file for 01_Fine_Map_Coloc_eQTLs.R
 
-
 scripts/
 Scripts to run the workflow. All scripts are written in Python or R and numbered in execution order:
 - 01_Fine_Map_Coloc_eQTLs.R: Fine-mapping using SuSIE, pairwise colocalization, and creation of union credible sets  
 - 02_Normalize_Log_Transform_Counts.R: DESeq normalization and log transformation of raw RNAseq counts  
-- 03_Covariate_Regression.py**: Covariate regression on normalized counts  
+- 03_Covariate_Regression.py: Covariate regression on normalized counts  
 - path_utils.R: Defines project root and data paths for R scripts
 - path_utils.py: Defines project root and data paths for Python scripts 
 
@@ -44,8 +43,8 @@ coloc (5.2.3)
 tidyverse (2.0.0)
 gdata (3.0.1)
 dplyr (1.1.4)
-igraph ()
-stringr () 
+igraph (2.1.2)
+stringr (1.5.1) 
 DESeq2 (1.42.1)
 here (1.0.1)
 
@@ -56,12 +55,18 @@ pandas==2.1.1
 statsmodels==0.14.4
 
 ---
+Running scripts
+
+After cloning the repository with git clone https://github.com/amourelato/ and installing the listed dependencies, R script scripts can be run with the working directory set to path/to/RPSA_eQTL_Fine_Mapping/scripts, and 
+Python scripts can be run from the command line from path/to/RPSA_eQTL_Fine_Mapping/scripts. Please note that script 01_Fine_Map_Coloc_eQTLs.R requires private genotype data from the GTEx consortium, and scripts 02 and 03 depend on data that was not uploaded due to GitHub size restrictions.
+
+---
 Notes
-- Raw genotype data (GTEx VCF) cannot be shared directly. Please obtained from dbGaP accession number phs000424v.8.p2
+- Raw genotype data (GTEx VCF) cannot be shared directly. Please obtained from dbGaP accession number phs000424v.8.p2 (https://www.ncbi.nlm.nih.gov/projects/gap/cgi-bin/study.cgi?study_id=phs000424.v8.p2)
 - The VCF files in GTEx_VCF_files/ were produced by subsetting the multi-sample VCF file provided in phs000424v.8.p2 to just the donors for the tissue, and to chr3:38406720-40412542 with bcftools.
 - PLINK files in GTEx_PLINK_files_for_RPSA/ were produced by subsetting the multi-sample VCF file provided in phs000424v.8.p2 to just the donors for the tissue, and to chr3:38406720-40412542 with bcftools. The subset multi-sample VCF file was converted to a gene-dosage file using using PLINK1.9 with the commands --keep-allele-order and --recode A-transpose
 - 01_Fine_Map_Coloc_eQTLs.R depends on the private gene-dosage files in GTEx_PLINK_files_for_RPSA/
 - Calculating allelic fold change depends on the private vcf files in GTEx_VCF_files/
-- Publicly available GTEx data was not uploaded due to size restrictions, and can be obtained from the provided URLs
+- Publicly available GTEx data was not uploaded due to size restrictions, and can be obtained from the URLs provided above.
 
 

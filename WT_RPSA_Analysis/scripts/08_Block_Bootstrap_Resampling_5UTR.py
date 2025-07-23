@@ -127,24 +127,6 @@ def BlockBootstrap(Fam_Dict, Individual_DF, iterations):
 
     return Chi_Squared_Stat
 
-
-def FreedmanDiaconisBins(List):
-    """
-    Calculate the number of histogram bins using the Freedman-Diaconis rule.
-
-    Args:
-        List (list): A list or array of numeric values.
-
-    Returns:
-        int: The recommended number of histogram bins.
-    """
-
-    q25, q75 = np.percentile(List, [25, 75])
-    bin_width = 2 * (q75 - q25) * len(List) ** (-1/3)
-    bins = round((max(List) - min(List)) / bin_width)
-  
-    return bins
-
 def main():
     """
     Main function
@@ -188,7 +170,7 @@ def main():
     
     
     # Plot the Bootstraped Chi-squared test statistics
-    bins = FreedmanDiaconisBins(np.sort(Bootstrapped_Test_Statistic))
+    bins = int(np.ceil(np.log2(len(Bootstrapped_Test_Statistic)) + 1))
     plt.hist(Bootstrapped_Test_Statistic, density=True, bins=bins, color='#1338BE', edgecolor='black', linewidth=0.5)
     plt.axvline(x=percentile_low, color='black', linestyle='--', linewidth=1.5)
     plt.axvline(x=mean, color='black', linestyle='--', linewidth=1.5)

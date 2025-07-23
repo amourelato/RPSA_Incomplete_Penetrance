@@ -10,7 +10,7 @@ Directory structure
 data/
 Contains raw input files and intermediate data:
 - SHAPEIT5_Phased/ Private phased genotype data from the sequenced individuals in the ICA-RPSA cohort (not uploaded). See notes below                  
-- Unphased_chr3_VCF/ Private phased genotype data from the sequenced members of kindreds ICA-AX and ICA-AS in the ICA-RPSA cohort (not uploaded). See notes below    
+- Unphased_chr3_VCF/ Private unphased genotype data from the sequenced members of kindreds ICA-AX and ICA-AS in the ICA-RPSA cohort (not uploaded). See notes below    
 - Multiplex_Structure_and_Denovo_Haplotype_Assignment/ helper text files for 01_Identify_WT_Haplotype_Export_Distance_WT_Seq.py to indicate samples that belong to the same kindred, and haplotypes corresponding to the WT RPSA carrying sequence for the individuals with denovo mutations.  
 - Individual_Blocks_Group_Phenotype/ helper text files for 07_Block_Bootstrap_Resampling_Coding.py, 08_Block_Bootstrap_Resampling_5UTR.py, 09_Block_Bootstrap_Resampling_Odds_Ratio_Coding.py, 10_Block_Bootstrap_Resampling_Odds_Ratio_5UTR.py to indicate blocks of samples 
 - GnomAD_v3_chr3_MAF/ chromosome 3 minor allele frequencies obtained from GnomAD v3, required for 05_ICA_AX_Sibling_Discordant.py and 06_ICA_AS_Sibling_Discordant.py, not uploaded due to GitHub size restrictions
@@ -21,12 +21,12 @@ Contains raw input files and intermediate data:
 
 Scripts/
 Scripts to run the workflow. All scripts are written in Python numbered in execution order:
-- 01_Identify_WT_Haplotype_Export_Distance_WT_Seq: Identifies shared WT RPSA carrying haplotype and calculates WT RPSA hamming distance matrix, depends on phased vcf file in SHAPEIT5_Phased/ which is not uploaded as it contains private genotype data which 
+- 01_Identify_WT_Haplotype_Export_Distance_WT_Seq: Identifies shared WT RPSA carrying haplotype and calculates WT RPSA hamming distance matrix, depends on phased vcf file in SHAPEIT5_Phased/ which is not uploaded as it contains private genotype data
 - 02_Sibship_Likelihood.py: Computes maximum likelihood binomial p-value using the sibships in the ICA-RPSA cohort
 - 03_Grouping_WT_at_rep_pos.py: Groups individuals by specific haplotype positions, depends on WT RPSA haplotype sequences in Distance_Haplotype_Intermediate_Files/ which are not uploaded as they contain private genotype data
 - 04_Plotting_Base_Distance_WT_G3.py: Plots base distances between G3 WT RPSA hamming distances, depends on hamming distance file in Distance_Haplotype_Intermediate_Files/
 - 05_ICA_AX_Sibling_Discordant.py : Finds non-identical by state (IBS) segments on chr3 between siblings in ICA-AX, depends on vcf file in Unphased_chr3_VCF/, which is not uploaded as it contains private genotype data
-- 06_IBS_Segments_B.py : Finds non-identical by state (IBS) segments on chr3 between siblings in ICA-AS, depends on vcf file in Unphased_chr3_VCF/, which is not uploaded as it contains private genotype data
+- 06_ICA_AS_Sibling_Discordant.py : Finds non-identical by state (IBS) segments on chr3 between siblings in ICA-AS, depends on vcf file in Unphased_chr3_VCF/, which is not uploaded as it contains private genotype data
 - 07_Block_Bootstrap_Resampling_Coding.py : Block-bootstrap replicates of chi-squared statistic from individuals with coding RPSA mutations, depends on blocks in Individual_Blocks_Group_Phenotype/
 - 08_Block_Bootstrap_Resampling_5UTR.py : Block-bootstrap replicates of chi-squared statistic from individuals with 5'UTR RPSA mutations, depends on blocks in Individual_Blocks_Group_Phenotype/
 - 09_Block_Bootstrap_Resampling_Odds_Ratio_Coding.py: Block-bootstrap replicates of the odds ratio from individuals with coding RPSA mutations, depends on blocks in Individual_Blocks_Group_Phenotype/
@@ -44,14 +44,18 @@ Results/
 
 Dependencies
 
-Scripts are written in Python were run using python v3.11.9 and require the following libraries (specific versions used in this analysis):
+Scripts are written in Python were run using python v3.11.9 and require the following libraries (specific versions used in this analysis are listed):
 
-* numpy==1.26.0
-* pandas==2.1.1
-* scipy==1.11.3
-* matplotlib==3.8.4
-* seaborn==0.13.2
+numpy==1.26.0
+pandas==2.1.1
+scipy==1.11.3
+matplotlib==3.8.4
+seaborn==0.13.2
 
+---
+Running scripts
+
+After cloning the repository with git clone https://github.com/amourelato/ and installing the listed dependencies, python scripts (02,04,07-10) can be run from the command line from WT_RPSA_Analysis/scripts. Python scripts 01 and 03-06 depend on private data, see notes below
 
 ---
 Notes
